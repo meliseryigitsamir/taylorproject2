@@ -1,0 +1,22 @@
+name: Sync to Hugging Face Hub
+on:
+  push:
+    branches: [main]
+
+  # Workflow'u manuel tetiklemek için
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Push to hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        # AŞAĞIDAKİ SATIRI KENDİNE GÖRE DÜZENLE!
+        # Örnek: run: git push https://meliseryigitsamir:$HF_TOKEN@huggingface.co/spaces/meliseryigitsamir/Video-Analiz-AI main
+        run: git push https://melissamir:$HF_TOKEN@huggingface.co/spaces/melissamir/github-taylor main
