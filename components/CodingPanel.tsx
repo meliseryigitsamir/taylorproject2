@@ -46,24 +46,36 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
     setCurrentCoding(existing || getInitialCoding(activeCoder));
   }, [activeCoder, video.id]);
 
+  /**
+   * ÇÖZÜM: Frame Bombardımanı Engelleme (Sampling Optimization)
+   * Her saniyede 1 kare (1 FPS) alır. Maksimum 40 kare ile sınırlandırır.
+   */
   const captureFrames = async (): Promise<string[]> => {
     const vid = videoRef.current;
     if (!vid) return [];
+
     const canvas = document.createElement('canvas');
-    canvas.width = 640; canvas.height = 360;
+    canvas.width = 640; // Analiz için yeterli çözünürlük
+    canvas.height = 360;
     const ctx = canvas.getContext('2d');
     const frames: string[] = [];
-    const points = [0.1, 0.5, 0.9];
+
+    const duration = vid.duration;
+    // Saniyede 1 kare al, ama toplamda 40 kareyi geçme (Performans ve Token Dengesi)
+    const step = Math.max(1, duration / 40); 
     
-    for (const point of points) {
-      vid.currentTime = vid.duration * point;
+    for (let time = 0.5; time < duration; time += step) {
+      vid.currentTime = time;
       await new Promise(r => {
         const handler = () => { vid.removeEventListener('seeked', handler); r(null); };
         vid.addEventListener('seeked', handler);
       });
       ctx?.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      frames.push(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]);
+      // Kaliteyi %50'de tutarak veri boyutunu düşür (hız kazandırır)
+      frames.push(canvas.toDataURL('image/jpeg', 0.5).split(',')[1]);
     }
+
+    console.log(`Analiz için ${frames.length} adet stratejik kare yakalandı.`);
     return frames;
   };
 
@@ -78,7 +90,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
     }
 
     setStage('working');
-    setAgentStatusText("Hazırlanıyor...");
+    setAgentStatusText("Kareler örnekleniyor...");
 
     try {
       const frames = await captureFrames();
@@ -100,7 +112,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
       if (e.message === "RE-SELECT_KEY" || e.message === "MISSING_KEY") {
         onRequestNewKey();
       } else {
-        alert("Analiz başlatılamadı. API anahtarınızın yüklü olduğundan emin olun.");
+        alert("Sistem Hatası: AI analiz motoruna bağlanılamadı.");
       }
     }
   };
@@ -109,7 +121,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
 
   const handleManualSave = () => {
     if (!currentCoding.coderName) {
-      alert("Lütfen bir kodlayıcı ismi seçiniz.");
+      alert("Lütfen kodlayıcı ismini belirtin.");
       return;
     }
     if (!currentCoding.taylorSegment) {
@@ -117,7 +129,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
       return;
     }
     onSave(activeCoder, currentCoding);
-    alert("Kayıt veritabanına eklendi.");
+    alert("Veriler IndexedDB veritabanına kaydedildi.");
   };
 
   return (
@@ -129,12 +141,12 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
           <div className="bg-white rounded-[40px] shadow-2xl max-w-xl w-full overflow-hidden animate-in zoom-in duration-300">
             <div className="p-8 border-b bg-slate-50 flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase">Pro-Agentic Sentez</h3>
-                <p className="text-[10px] text-slate-400 font-bold tracking-widest">Bölüm 11 İçerik Analizi Metodolojisi</p>
+                <h3 className="text-xl font-black text-slate-900 uppercase">Optimize Analiz</h3>
+                <p className="text-[10px] text-slate-400 font-bold tracking-widest">Saniyede 1 Kare (Max 40 Frame) Örnekleme</p>
               </div>
               <div className="text-right">
                 <div className="text-xl font-black text-indigo-600">~{getTotalEstimate()}</div>
-                <div className="text-[8px] font-black text-slate-400 uppercase">Token</div>
+                <div className="text-[8px] font-black text-slate-400 uppercase">Token Est.</div>
               </div>
             </div>
             <div className="p-8 space-y-4">
@@ -166,7 +178,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
           <div className="w-24 h-24 rounded-[32px] bg-indigo-600 animate-bounce flex items-center justify-center mb-10 shadow-2xl shadow-indigo-100">
             <div className="w-10 h-10 bg-white/30 rounded-full animate-ping"></div>
           </div>
-          <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Akademik Muhakeme Aktif</h4>
+          <h4 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Akademik Muhakeme Sürüyor</h4>
           <p className="text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] bg-indigo-50 px-6 py-2.5 rounded-full border border-indigo-100">{agentStatusText}</p>
         </div>
       )}
@@ -215,7 +227,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-950 p-12 text-center">
                    <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 text-2xl">📁</div>
                    <label className="cursor-pointer bg-white text-slate-900 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-slate-50 transition-all">
-                     VİDEO YÜKLE
+                     VİDEO SEÇİN
                      <input type="file" accept="video/*" onChange={e => {
                        const f = e.target.files?.[0];
                        if(f) {
@@ -230,7 +242,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
 
             {currentCoding.reasoningChain && currentCoding.reasoningChain.length > 0 && (
               <div className="bg-white rounded-[40px] p-12 border border-slate-100 shadow-sm">
-                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-10">AI Muhakeme Gerekçeleri</h5>
+                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-10">AI Analitik Çıktıları</h5>
                 <div className="space-y-8">
                   {currentCoding.reasoningChain.map((log, i) => (
                     <div key={i} className="pl-8 border-l-2 border-indigo-50 last:border-0 pb-6">
@@ -246,14 +258,14 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
           <div className="xl:col-span-5">
             <div className="bg-white p-10 rounded-[56px] shadow-2xl border border-slate-100 sticky top-10">
               <div className="mb-10">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest px-1">Kodlayıcı Kimliği *</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest px-1">Kodlayıcı İsmi *</p>
                 <select 
                   value={currentCoding.coderName} 
                   disabled={activeCoder === 'ai'}
                   onChange={e => setCurrentCoding({...currentCoding, coderName: e.target.value})}
                   className="w-full bg-slate-50 border-none rounded-3xl px-6 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 >
-                  <option value="">Lütfen İsim Seçiniz...</option>
+                  <option value="">İsim Seçiniz...</option>
                   {activeCoder !== 'ai' && CODER_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
                   <option value="AI Expert (Gemini 3 Pro)">🤖 AI Expert (Gemini 3 Pro)</option>
                 </select>
@@ -303,7 +315,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                   onClick={handleManualSave} 
                   className="w-full bg-slate-900 text-white font-black py-6 rounded-[32px] shadow-2xl hover:bg-black transition-all mt-10 uppercase tracking-widest text-[11px] active:scale-98"
                 >
-                  PARAMETRELERİ KAYDET
+                  VERİLERİ VERİTABANINA YAZ
                 </button>
               )}
             </div>
