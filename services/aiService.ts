@@ -35,7 +35,7 @@ export const analyzeVideoAgentic = async (
   videoDuration: number,
   onStepStart: (stepId: string, status: string) => void
 ): Promise<Partial<CodingData>> => {
-  // API Key process.env.API_KEY üzerinden otomatik olarak yönetilir.
+  // Fix: Create a new GoogleGenAI instance right before making an API call to ensure it uses the latest API key.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const logs: AgentLog[] = [];
   
@@ -55,19 +55,22 @@ export const analyzeVideoAgentic = async (
         ] 
       }
     });
+    
+    // Fix: Access response.text property directly.
     const visionReport = visionRes.text || "Veri toplanamadı.";
     logs.push({ agent: "Görsel Veri Madencisi", thought: visionReport });
 
     // 2. ADIM: LATENT ANALİZ VE TAYLOR SENTEZİ
     onStepStart('integrator', 'Latent analiz ve Taylor (1999) konumlandırması yapılıyor...');
     
+    // Fix: Use standard Type values in responseSchema and remove enum to ensure maximum compatibility with the simplified schema system.
     const responseSchema = {
       type: Type.OBJECT,
       properties: {
-        taylorSegment: { type: Type.STRING, enum: Object.values(TaylorSegment) },
-        persuasionPath: { type: Type.STRING, enum: Object.values(PersuasionPath) },
+        taylorSegment: { type: Type.STRING },
+        persuasionPath: { type: Type.STRING },
         musicUsage: { type: Type.BOOLEAN },
-        musicType: { type: Type.STRING, enum: Object.values(MusicType) },
+        musicType: { type: Type.STRING },
         celebrityUsage: { type: Type.BOOLEAN },
         celebrityName: { type: Type.STRING },
         fcbInvolvement: { type: Type.INTEGER },
@@ -88,11 +91,15 @@ export const analyzeVideoAgentic = async (
       config: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
-        thinkingConfig: { thinkingBudget: 32000 }
+        thinkingConfig: { thinkingBudget: 32768 } // Use max budget for gemini-3-pro-preview.
       }
     });
 
-    const result = JSON.parse(finalRes.text.trim());
+    // Fix: Access response.text property and parse JSON output.
+    const resultText = finalRes.text;
+    if (!resultText) throw new Error("AI response was empty.");
+    
+    const result = JSON.parse(resultText.trim());
     logs.push({ agent: "Strateji Uzmanı (Pro)", thought: `Karar: ${result.taylorSegment}. Gerekçe: ${result.choiceReasoning}` });
 
     return {
@@ -106,7 +113,8 @@ export const analyzeVideoAgentic = async (
     };
   } catch (error: any) {
     console.error("AI Analysis Error:", error);
-    if (error.message?.includes("not found") || error.status === 401 || error.status === 403) {
+    // Fix: Handle specific "entity not found" error to trigger API key re-selection as per guidelines.
+    if (error.message?.toLowerCase().includes("not found") || error.status === 401 || error.status === 403) {
       throw new Error("RE-SELECT_KEY");
     }
     throw error;

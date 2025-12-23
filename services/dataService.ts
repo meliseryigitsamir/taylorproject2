@@ -1,6 +1,20 @@
+
+import { Dexie, type Table } from 'dexie';
 import { VideoData } from '../types';
 
-const STORAGE_KEY = 'video_analysis_multi_coder_v1';
+// Fix: Use named import for Dexie to ensure proper class inheritance and avoid the 'version' property error.
+export class VideoDatabase extends Dexie {
+  videos!: Table<VideoData, string>;
+
+  constructor() {
+    super('VideoAnalysisDB');
+    this.version(1).stores({
+      videos: 'id, title, status' // status üzerinden hızlı dashboard sorguları için indexlendi
+    });
+  }
+}
+
+export const db = new VideoDatabase();
 
 export const generateMockVideos = (count: number): VideoData[] => {
   return Array.from({ length: count }, (_, i) => ({
@@ -13,11 +27,18 @@ export const generateMockVideos = (count: number): VideoData[] => {
   }));
 };
 
-export const saveToStorage = (data: VideoData[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+export const saveVideosToDB = async (videos: VideoData[]) => {
+  await db.videos.bulkPut(videos);
 };
 
-export const loadFromStorage = (): VideoData[] | null => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : null;
+export const updateSingleVideoInDB = async (video: VideoData) => {
+  await db.videos.put(video);
+};
+
+export const loadVideosFromDB = async (): Promise<VideoData[]> => {
+  return await db.videos.toArray();
+};
+
+export const clearDatabase = async () => {
+  await db.videos.clear();
 };

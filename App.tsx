@@ -4,54 +4,61 @@ import { VideoList } from './components/VideoList';
 import { CodingPanel } from './components/CodingPanel';
 import { Dashboard } from './components/Dashboard';
 import { VideoData, CodingData, CoderRole } from './types';
-import { generateMockVideos, loadFromStorage, saveToStorage } from './services/dataService';
+import { generateMockVideos, loadVideosFromDB, saveVideosToDB, updateSingleVideoInDB } from './services/dataService';
 
 export default function App() {
   const [videos, setVideos] = useState<VideoData[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'coding' | 'dashboard' | 'howto'>('coding');
   const [searchTerm, setSearchTerm] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const saved = loadFromStorage();
-    if (saved && saved.length > 0) {
-      setVideos(saved);
-      setSelectedId(saved[0].id);
-    } else {
-      const initial = generateMockVideos(400);
-      setVideos(initial);
-      setSelectedId(initial[0].id);
-    }
+    const initData = async () => {
+      const saved = await loadVideosFromDB();
+      if (saved && saved.length > 0) {
+        setVideos(saved);
+        setSelectedId(saved[0].id);
+      } else {
+        const initial = generateMockVideos(400);
+        await saveVideosToDB(initial);
+        setVideos(initial);
+        setSelectedId(initial[0].id);
+      }
+      setIsLoading(false);
+    };
+    initData();
   }, []);
 
-  const handleSaveVideo = (coderType: CoderRole, coding: CodingData) => {
-    const nextVideos = videos.map(v => {
-      if (v.id === selectedId) {
-        const updatedCodings = { ...v.codings, [coderType]: coding };
-        
-        // Akademik Konsensüs Protokolü: AI + Human1 + Human2 girilmeli. Hakem en son onayı verir.
-        const hasAI = !!updatedCodings.ai;
-        const hasH1 = !!updatedCodings.human1;
-        const hasH2 = !!updatedCodings.human2;
-        const hasReferee = !!updatedCodings.referee;
+  const handleSaveVideo = async (coderType: CoderRole, coding: CodingData) => {
+    const targetVideo = videos.find(v => v.id === selectedId);
+    if (!targetVideo) return;
 
-        let newStatus: VideoData['status'] = 'coding';
-        
-        // Şart: AI + 1 Human + 1 Human + 1 Hakem tamamlanmadan completed olamaz.
-        if (hasAI && hasH1 && hasH2 && hasReferee) {
-          newStatus = 'completed';
-        } else if (hasAI && hasH1 && hasH2) {
-          newStatus = 'referee_needed';
-        } else if (!hasAI && !hasH1 && !hasH2) {
-          newStatus = 'pending';
-        }
+    const updatedCodings = { ...targetVideo.codings, [coderType]: coding };
+    
+    // Akademik Konsensüs Protokolü: AI + Human1 + Human2 girilmeli. Hakem en son onayı verir.
+    const hasAI = !!updatedCodings.ai;
+    const hasH1 = !!updatedCodings.human1;
+    const hasH2 = !!updatedCodings.human2;
+    const hasReferee = !!updatedCodings.referee;
 
-        return { ...v, codings: updatedCodings, status: newStatus };
-      }
-      return v;
-    });
-    setVideos(nextVideos);
-    saveToStorage(nextVideos);
+    let newStatus: VideoData['status'] = 'coding';
+    
+    if (hasAI && hasH1 && hasH2 && hasReferee) {
+      newStatus = 'completed';
+    } else if (hasAI && hasH1 && hasH2) {
+      newStatus = 'referee_needed';
+    } else if (!hasAI && !hasH1 && !hasH2) {
+      newStatus = 'pending';
+    }
+
+    const updatedVideo: VideoData = { ...targetVideo, codings: updatedCodings, status: newStatus };
+    
+    // UI Güncelle
+    setVideos(prev => prev.map(v => v.id === selectedId ? updatedVideo : v));
+    
+    // Veritabanı Güncelle (IndexedDB)
+    await updateSingleVideoInDB(updatedVideo);
   };
 
   const handleSelectKey = async () => {
@@ -61,6 +68,15 @@ export default function App() {
       await window.aistudio.openSelectKey();
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full bg-slate-900 flex flex-col items-center justify-center text-white">
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em]">IndexedDB Laboratuvarı Hazırlanıyor</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-full bg-slate-900 overflow-hidden font-sans text-slate-900">
@@ -81,7 +97,7 @@ export default function App() {
                 onClick={() => setActiveTab(t as any)} 
                 className={`h-full border-b-[3px] text-[11px] font-black uppercase tracking-[0.15em] transition-all ${activeTab === t ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
               >
-                {t === 'coding' ? 'Analiz Laboratuvarı' : t === 'dashboard' ? 'Veri Dashboard' : 'Bilgi Bankası'}
+                {t === 'coding' ? 'Analiz Laboratuvarı' : t === 'dashboard' ? 'Veri Dashboard' : 'Wiki'}
               </button>
             ))}
           </nav>
@@ -109,20 +125,24 @@ export default function App() {
             <Dashboard videos={videos} />
           ) : (
             <div className="p-20 overflow-y-auto h-full max-w-5xl mx-auto text-slate-700 bg-white">
-               <h1 className="text-4xl font-black text-slate-900 mb-8">Analiz Protokolü</h1>
+               <h1 className="text-4xl font-black text-slate-900 mb-8">Teknik Altyapı</h1>
                <p className="text-lg leading-relaxed text-slate-500 mb-12 italic">
-                 Bölüm 11 İçerik Analizi ve Taylor'ın Altı Segment Çarkı (1999)
+                 "IndexedDB Tabanlı Sınırsız Veri Saklama ve Stratejik AI Analizi"
                </p>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  <div className="bg-slate-50 p-10 rounded-[32px] border border-slate-100">
-                    <h3 className="font-black text-slate-800 uppercase text-xs mb-6 tracking-widest">Akademik Validasyon Şartı</h3>
-                    <p className="text-sm font-medium mb-6">Analizin tamamlanmış (Completed) sayılması için aşağıdaki 4 girdi zorunludur:</p>
-                    <ul className="space-y-4 text-sm font-medium">
-                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">1</span> AI Expert: Gemini 3 Pro Sentezi</li>
-                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">2</span> Kodlayıcı 1: Birinci İnsan Analizi</li>
-                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">3</span> Kodlayıcı 2: İkinci İnsan Analizi</li>
-                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]">4</span> Hakem: Çelişki Giderme ve Onay</li>
-                    </ul>
+                    <h3 className="font-black text-slate-800 uppercase text-xs mb-6 tracking-widest">Veri Güvenliği</h3>
+                    <p className="text-sm font-medium text-slate-600 leading-relaxed">
+                      Uygulama artık LocalStorage (5MB) yerine <strong>IndexedDB</strong> kullanmaktadır. 
+                      400 videonun tamamı için binlerce satırlık analiz ve gerekçelendirme metni tarayıcı limitlerine takılmadan saklanabilir.
+                    </p>
+                 </div>
+                 <div className="bg-indigo-50 p-10 rounded-[32px] border border-indigo-100">
+                    <h3 className="font-black text-indigo-900 uppercase text-xs mb-6 tracking-widest">API Güvenlik Notu</h3>
+                    <p className="text-sm font-medium text-indigo-700 leading-relaxed">
+                      API anahtarları istemci tarafında runtime ortamında yönetilir. 
+                      Üretim aşamasında bir <strong>Backend Proxy</strong> kullanılması önerilir, ancak şu anki laboratuvar ortamı için izole bir sandbox yapısı kurulmuştur.
+                    </p>
                  </div>
                </div>
             </div>
