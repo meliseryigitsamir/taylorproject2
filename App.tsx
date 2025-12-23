@@ -37,6 +37,7 @@ export default function App() {
 
         let newStatus: VideoData['status'] = 'coding';
         
+        // Şart: AI + 1 Human + 1 Human + 1 Hakem tamamlanmadan completed olamaz.
         if (hasAI && hasH1 && hasH2 && hasReferee) {
           newStatus = 'completed';
         } else if (hasAI && hasH1 && hasH2) {
@@ -80,12 +81,12 @@ export default function App() {
                 onClick={() => setActiveTab(t as any)} 
                 className={`h-full border-b-[3px] text-[11px] font-black uppercase tracking-[0.15em] transition-all ${activeTab === t ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
               >
-                {t === 'coding' ? 'Analiz Laboratuvarı' : t === 'dashboard' ? 'Veri Dashboard' : 'Wiki'}
+                {t === 'coding' ? 'Analiz Laboratuvarı' : t === 'dashboard' ? 'Veri Dashboard' : 'Bilgi Bankası'}
               </button>
             ))}
           </nav>
           <div className="flex items-center gap-6">
-            <button onClick={handleSelectKey} className="text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest border border-slate-200 px-4 py-2 rounded-lg">
+            <button onClick={handleSelectKey} className="text-[10px] font-black text-slate-400 hover:text-indigo-600 uppercase tracking-widest border border-slate-200 px-4 py-2 rounded-lg transition-colors">
               API KONFİGÜRASYONU
             </button>
             <div className="h-8 w-px bg-slate-100"></div>
@@ -110,16 +111,17 @@ export default function App() {
             <div className="p-20 overflow-y-auto h-full max-w-5xl mx-auto text-slate-700 bg-white">
                <h1 className="text-4xl font-black text-slate-900 mb-8">Analiz Protokolü</h1>
                <p className="text-lg leading-relaxed text-slate-500 mb-12 italic">
-                 Taylor'ın Altı Segment Çarkı ve Akademik Konsensüs Sistemi
+                 Bölüm 11 İçerik Analizi ve Taylor'ın Altı Segment Çarkı (1999)
                </p>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  <div className="bg-slate-50 p-10 rounded-[32px] border border-slate-100">
-                    <h3 className="font-black text-slate-800 uppercase text-xs mb-6 tracking-widest">Akış Şeması</h3>
+                    <h3 className="font-black text-slate-800 uppercase text-xs mb-6 tracking-widest">Akademik Validasyon Şartı</h3>
+                    <p className="text-sm font-medium mb-6">Analizin tamamlanmış (Completed) sayılması için aşağıdaki 4 girdi zorunludur:</p>
                     <ul className="space-y-4 text-sm font-medium">
-                      <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> 1. AI Analizi (Pro Model)</li>
-                      <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-blue-500"></span> 2. Bağımsız Kodlayıcı 1</li>
-                      <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-blue-500"></span> 3. Bağımsız Kodlayıcı 2</li>
-                      <li className="flex items-center gap-3"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> 4. Hakem Final Onayı</li>
+                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">1</span> AI Expert: Gemini 3 Pro Sentezi</li>
+                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">2</span> Kodlayıcı 1: Birinci İnsan Analizi</li>
+                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">3</span> Kodlayıcı 2: İkinci İnsan Analizi</li>
+                      <li className="flex items-center gap-3"><span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]">4</span> Hakem: Çelişki Giderme ve Onay</li>
                     </ul>
                  </div>
                </div>

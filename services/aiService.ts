@@ -14,19 +14,19 @@ export interface AgentStep {
 export const AGENT_PIPELINE: AgentStep[] = [
   { 
     id: 'vision', 
-    name: 'Görsel Tarayıcı (Flash)', 
-    role: 'Ham Veri Çıkarımı', 
-    estimatedTokens: 1500, 
+    name: 'Görsel Veri Madencisi', 
+    role: 'İkonik ve Sembolik Tarama', 
+    estimatedTokens: 2000, 
     model: 'gemini-3-flash-preview',
-    description: 'Video karelerinden nesneleri, metinleri ve temel ögeleri çıkarır.'
+    description: 'Bölüm 11 içerik analizi tekniklerini kullanarak ham görsel veriyi (manifest content) raporlar.'
   },
   { 
     id: 'integrator', 
-    name: 'Baş Analist (Pro)', 
-    role: 'Stratejik Sentez', 
-    estimatedTokens: 4000, 
+    name: 'Strateji Uzmanı (Pro)', 
+    role: 'Latent Analiz ve Sentez', 
+    estimatedTokens: 5000, 
     model: 'gemini-3-pro-preview',
-    description: 'Görsel verileri Taylor (1999) ve FCB modelleriyle akademik olarak yorumlar.'
+    description: 'Ham veriyi Taylor (1999) 6 Segment Çarkı üzerinden akademik süzgeçten geçirir.'
   },
 ];
 
@@ -35,8 +35,8 @@ export const analyzeVideoAgentic = async (
   videoDuration: number,
   onStepStart: (stepId: string, status: string) => void
 ): Promise<Partial<CodingData>> => {
-  // NOT: API Key sistem tarafından process.env.API_KEY üzerinden otomatik sağlanır.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+  // API Key process.env.API_KEY üzerinden otomatik olarak yönetilir.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const logs: AgentLog[] = [];
   
   const imageParts = base64Frames.map((base64) => ({
@@ -44,22 +44,22 @@ export const analyzeVideoAgentic = async (
   }));
 
   try {
-    // 1. ADIM: GÖRSEL ANALİZ (Flash - Hızlı)
-    onStepStart('vision', 'Görüntü katmanları nesnel olarak taranıyor...');
+    // 1. ADIM: MANIFEST CONTENT ANALİZİ (Chapter 11 Methodology)
+    onStepStart('vision', 'Görsel katmanlar (Manifest Content) çözümleniyor...');
     const visionRes = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: { 
         parts: [
           ...imageParts, 
-          { text: "GÖREV: Bu reklamdaki görsel unsurları nesnel olarak raporla. Ekran metinleri, logo, renk paleti ve oyuncuları tanımla. ÖNEMLİ: Eğer bir ünlünün kimliğinden %100 emin değilsen isim verme, sadece fiziksel özelliklerini yaz (örn: 'kır saçlı erkek oyuncu'). Hallüsinasyon üretme." }
+          { text: "METODOLOJİ: Bölüm 11 İçerik Analizi - Belirgin İçerik (Manifest Content) Taraması.\nGÖREV: Bu reklamdaki görsel unsurları nesnel olarak listele. Renkler, ürünler, metinler ve insan figürlerini tanımla. ÖNEMLİ: Ünlü kimlikleri konusunda %100 emin değilsen (Robert De Niro gibi hallüsinasyonlar üretme!), sadece fiziksel özelliklerini yaz. 'X yaşında erkek oyuncu' de." }
         ] 
       }
     });
-    const visionReport = visionRes.text || "Görsel veri raporlanamadı.";
-    logs.push({ agent: "Görsel Tarayıcı", thought: visionReport });
+    const visionReport = visionRes.text || "Veri toplanamadı.";
+    logs.push({ agent: "Görsel Veri Madencisi", thought: visionReport });
 
-    // 2. ADIM: AKADEMİK SENTEZ (Pro - Muhakeme)
-    onStepStart('integrator', 'Akademik muhakeme ve Taylor segmentasyonu yapılıyor...');
+    // 2. ADIM: LATENT ANALİZ VE TAYLOR SENTEZİ
+    onStepStart('integrator', 'Latent analiz ve Taylor (1999) konumlandırması yapılıyor...');
     
     const responseSchema = {
       type: Type.OBJECT,
@@ -81,19 +81,19 @@ export const analyzeVideoAgentic = async (
       model: 'gemini-3-pro-preview',
       contents: {
         parts: [
-          { text: `GÖRSEL VERİ RAPORU:\n${visionReport}` },
-          { text: `GÖREV: Yukarıdaki nesnel verileri kullanarak reklamı kodla. Taylor (1999) Altı Segment Çarkı ve FCB Grid modellerini uygula. 'choiceReasoning' alanında her seçimini akademik gerekçelerle savun. ASLA Robert De Niro gibi görmediğin ünlüleri uydurma. Sadece raporda olan veya %100 kesinleşen veriyi kullan.` }
+          { text: `MANİFEST VERİLER:\n${visionReport}` },
+          { text: `GÖREV: Yukarıdaki verileri kullanarak reklamın gizil (latent) anlamını analiz et. Taylor'ın Altı Segment Çarkı'ndan (Ration, Acute Need, Routine, Ego, Social, Sensory) en uygun olanı seç. Robert De Niro gibi görmediğin kişileri uydurma. Gerekçeni akademik bir dille 'choiceReasoning' alanında belirt.` }
         ]
       },
       config: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
-        thinkingConfig: { thinkingBudget: 20000 }
+        thinkingConfig: { thinkingBudget: 32000 }
       }
     });
 
     const result = JSON.parse(finalRes.text.trim());
-    logs.push({ agent: "Baş Analist (Pro)", thought: result.choiceReasoning });
+    logs.push({ agent: "Strateji Uzmanı (Pro)", thought: `Karar: ${result.taylorSegment}. Gerekçe: ${result.choiceReasoning}` });
 
     return {
       ...result,
@@ -105,7 +105,7 @@ export const analyzeVideoAgentic = async (
       coderName: `AI Expert (Gemini 3 Pro)`
     };
   } catch (error: any) {
-    console.error("AI Service Error:", error);
+    console.error("AI Analysis Error:", error);
     if (error.message?.includes("not found") || error.status === 401 || error.status === 403) {
       throw new Error("RE-SELECT_KEY");
     }
