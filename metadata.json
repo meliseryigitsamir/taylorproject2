@@ -1,0 +1,7 @@
+{
+  "name": "Taylor & FCB Video Analiz Laboratuvarı",
+  "description": "Taylor'ın 6 Segment Çarkı (1999) ve İçerik Analizi yöntemini temel alan, AI + 2 İnsan + Hakem protokollü akademik araştırma aracı.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
