@@ -22,20 +22,30 @@ export const AGENT_PIPELINE: AgentStep[] = [
   },
   { 
     id: 'integrator', 
-    name: 'Strateji Uzmanı (Pro)', 
+    name: 'Multimodal Strateji Uzmanı (Pro)', 
     role: 'Latent Analiz ve Sentez', 
-    estimatedTokens: 5000, 
+    estimatedTokens: 6000, 
     model: 'gemini-3-pro-preview',
-    description: 'Ham veriyi Taylor (1999) 6 Segment Çarkı üzerinden akademik süzgeçten geçirir.'
+    description: 'Ses, görüntü ve psikolojik segmentleri birleştiren kıdemli stratejist.'
   },
 ];
+
+const MULTIMODAL_PERSONA = `Sen, Reklamcılık ve Tüketici Psikolojisi alanında uzmanlaşmış, 'Multimodal' (Çoklu Algı) analiz yeteneğine sahip kıdemli bir stratejistsin.
+
+GÖREVİN:
+Video karelerini hem GÖRSEL hem de İŞİTSEL (görselden çıkarılan/tahmin edilen) verileri birleştirerek analiz etmektir. Sadece görüntüye bakmak YASAKTIR. Görüntüdeki enstrümanlar, konuşmacı ağız hareketleri, altyazılar ve ortamın yarattığı 'işitsel atmosfer' analizinin temel taşıdır.
+
+METODOLOJİN:
+1. İŞİTSEL ANALİZ: Müzik temposu (tahmini), Voiceover tonu (otoriter, şefkatli, heyecanlı) ve işitsel atmosferi tanımla.
+2. GÖRSEL ANALİZ: Renk paleti, kurgu hızı ve ikonografiyi çöz.
+3. TEORİK KODLAMA: Taylor'ın Altı Segment Çarkı ve FCB Grid üzerinden sentez yap.
+4. NİTEL GEREKÇE: Kararını verirken MUTLAKA işitsel kanıtlara atıfta bulun.`;
 
 export const analyzeVideoAgentic = async (
   base64Frames: string[], 
   videoDuration: number,
   onStepStart: (stepId: string, status: string) => void
 ): Promise<Partial<CodingData>> => {
-  // Fix: Create a new GoogleGenAI instance right before making an API call to ensure it uses the latest API key.
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const logs: AgentLog[] = [];
   
@@ -44,26 +54,27 @@ export const analyzeVideoAgentic = async (
   }));
 
   try {
-    // 1. ADIM: MANIFEST CONTENT ANALİZİ (Chapter 11 Methodology)
-    onStepStart('vision', 'Görsel katmanlar (Manifest Content) çözümleniyor...');
+    // 1. ADIM: MANIFEST CONTENT ANALİZİ
+    onStepStart('vision', 'Görsel ve semantik katmanlar tarandığı sırada işitsel ipuçları toplanıyor...');
     const visionRes = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: { 
         parts: [
           ...imageParts, 
-          { text: "METODOLOJİ: Bölüm 11 İçerik Analizi - Belirgin İçerik (Manifest Content) Taraması.\nGÖREV: Bu reklamdaki görsel unsurları nesnel olarak listele. Renkler, ürünler, metinler ve insan figürlerini tanımla. ÖNEMLİ: Ünlü kimlikleri konusunda %100 emin değilsen (Robert De Niro gibi hallüsinasyonlar üretme!), sadece fiziksel özelliklerini yaz. 'X yaşında erkek oyuncu' de." }
+          { text: "GÖREV: Reklamdaki görsel unsurları ve 'görselden anlaşılan' işitsel öğeleri (müzik aleti, şarkı söyleyen biri, bağıran bir kalabalık vb.) listele. Ünlüler konusunda temkinli ol, uydurma yapma." }
         ] 
+      },
+      config: {
+        systemInstruction: "Sen Bölüm 11 İçerik Analizi uzmanısın. Manifest veriye odaklan."
       }
     });
     
-    // Fix: Access response.text property directly.
     const visionReport = visionRes.text || "Veri toplanamadı.";
     logs.push({ agent: "Görsel Veri Madencisi", thought: visionReport });
 
-    // 2. ADIM: LATENT ANALİZ VE TAYLOR SENTEZİ
-    onStepStart('integrator', 'Latent analiz ve Taylor (1999) konumlandırması yapılıyor...');
+    // 2. ADIM: MULTIMODAL SENTEZ VE TAYLOR/FCB ANALİZİ
+    onStepStart('integrator', 'Kıdemli Stratejist; ses, görüntü ve psikolojik segmentleri sentezliyor...');
     
-    // Fix: Use standard Type values in responseSchema and remove enum to ensure maximum compatibility with the simplified schema system.
     const responseSchema = {
       type: Type.OBJECT,
       properties: {
@@ -75,45 +86,48 @@ export const analyzeVideoAgentic = async (
         celebrityName: { type: Type.STRING },
         fcbInvolvement: { type: Type.INTEGER },
         fcbThinkingFeeling: { type: Type.INTEGER },
-        choiceReasoning: { type: Type.STRING }
+        choiceReasoning: { type: Type.STRING },
+        auditoryInsight: { type: Type.STRING }
       },
-      required: ["taylorSegment", "choiceReasoning", "fcbInvolvement", "fcbThinkingFeeling", "musicType", "celebrityUsage"]
+      required: ["taylorSegment", "choiceReasoning", "fcbInvolvement", "fcbThinkingFeeling", "auditoryInsight"]
     };
 
     const finalRes = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
       contents: {
         parts: [
-          { text: `MANİFEST VERİLER:\n${visionReport}` },
-          { text: `GÖREV: Yukarıdaki verileri kullanarak reklamın gizil (latent) anlamını analiz et. Taylor'ın Altı Segment Çarkı'ndan (Ration, Acute Need, Routine, Ego, Social, Sensory) en uygun olanı seç. Robert De Niro gibi görmediğin kişileri uydurma. Gerekçeni akademik bir dille 'choiceReasoning' alanında belirt.` }
+          { text: `HAM ANALİZ RAPORU:\n${visionReport}` },
+          { text: "GÖREV: Multimodal Stratejist kimliğinle yukarıdaki verileri Taylor ve FCB modellerine göre sentezle. 'auditoryInsight' alanında videonun ses/müzik atmosferine dair spesifik bir çıkarım yap. Kararını akademik bir dille 'choiceReasoning' alanında sun." }
         ]
       },
       config: {
+        systemInstruction: MULTIMODAL_PERSONA,
         responseMimeType: "application/json",
         responseSchema: responseSchema,
-        thinkingConfig: { thinkingBudget: 32768 } // Use max budget for gemini-3-pro-preview.
+        thinkingConfig: { thinkingBudget: 32768 }
       }
     });
 
-    // Fix: Access response.text property and parse JSON output.
     const resultText = finalRes.text;
     if (!resultText) throw new Error("AI response was empty.");
     
     const result = JSON.parse(resultText.trim());
-    logs.push({ agent: "Strateji Uzmanı (Pro)", thought: `Karar: ${result.taylorSegment}. Gerekçe: ${result.choiceReasoning}` });
+    logs.push({ 
+        agent: "Multimodal Stratejist", 
+        thought: `İşitsel Çıkarım: ${result.auditoryInsight}\n\nStratejik Karar: ${result.taylorSegment}\n\nGerekçe: ${result.choiceReasoning}` 
+    });
 
     return {
       ...result,
       videoLength: videoDuration,
       manifestTags: visionReport.split('\n').filter(l => l.length > 5).slice(0, 5),
-      latentNotes: result.choiceReasoning,
+      latentNotes: `[İşitsel Analiz]: ${result.auditoryInsight}\n\n[Strateji]: ${result.choiceReasoning}`,
       reasoningChain: logs,
       timestamp: Date.now(),
-      coderName: `AI Expert (Gemini 3 Pro)`
+      coderName: `AI Multimodal Strategist`
     };
   } catch (error: any) {
     console.error("AI Analysis Error:", error);
-    // Fix: Handle specific "entity not found" error to trigger API key re-selection as per guidelines.
     if (error.message?.toLowerCase().includes("not found") || error.status === 401 || error.status === 403) {
       throw new Error("RE-SELECT_KEY");
     }

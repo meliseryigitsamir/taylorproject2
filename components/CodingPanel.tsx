@@ -46,10 +46,6 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
     setCurrentCoding(existing || getInitialCoding(activeCoder));
   }, [activeCoder, video.id]);
 
-  /**
-   * KRİTİK GÜNCELLEME: Saniyede 1 Kare (1 FPS) Sampling
-   * Modelin token limitine takılmaması ve analiz kalitesinin artması için optimize edildi.
-   */
   const captureFrames = async (): Promise<string[]> => {
     const vid = videoRef.current;
     if (!vid) return [];
@@ -61,8 +57,6 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
     const frames: string[] = [];
 
     const duration = vid.duration;
-    // Saniyede 1 kare (step = 1s). 
-    // Maksimum 60 kare (Gemini 3 Pro için optimal derinlik ve hız dengesi)
     const maxFrames = 60;
     const step = Math.max(1, duration / maxFrames); 
     
@@ -73,11 +67,9 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
         vid.addEventListener('seeked', handler);
       });
       ctx?.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      // JPEG kalitesini %50 tutarak base64 boyutunu ve transfer süresini optimize ediyoruz
       frames.push(canvas.toDataURL('image/jpeg', 0.5).split(',')[1]);
     }
 
-    console.log(`Akademik analiz için ${frames.length} stratejik kare örneklendi.`);
     return frames;
   };
 
@@ -92,7 +84,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
     }
 
     setStage('working');
-    setAgentStatusText("Kareler saniyede 1 FPS hızında örnekleniyor...");
+    setAgentStatusText("Multimodal veriler sentezleniyor...");
 
     try {
       const frames = await captureFrames();
@@ -114,7 +106,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
       if (e.message === "RE-SELECT_KEY") {
         onRequestNewKey();
       } else {
-        alert("AI Analizi başarısız oldu. Lütfen internet bağlantınızı ve API anahtarınızı kontrol edin.");
+        alert("AI Analizi başarısız oldu.");
       }
     }
   };
@@ -127,7 +119,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
       return;
     }
     if (!currentCoding.taylorSegment) {
-      alert("Taylor Segment (1999) seçimi akademik validasyon için zorunludur.");
+      alert("Taylor Segment seçimi zorunludur.");
       return;
     }
     onSave(activeCoder, currentCoding);
@@ -143,12 +135,12 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
           <div className="bg-white rounded-[40px] shadow-2xl max-w-xl w-full overflow-hidden animate-in zoom-in duration-300">
             <div className="p-8 border-b bg-slate-50 flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-black text-slate-900 uppercase">Pro-Agentic Analiz</h3>
-                <p className="text-[10px] text-slate-400 font-bold tracking-widest">FPS: 1 | Max Frame: 60 | Model: Gemini 3 Pro</p>
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Multimodal Stratejist</h3>
+                <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Görsel + İşitsel Sentez Modu</p>
               </div>
               <div className="text-right">
                 <div className="text-xl font-black text-indigo-600">~{getTotalEstimate()}</div>
-                <div className="text-[8px] font-black text-slate-400 uppercase">Token Tahmini</div>
+                <div className="text-[8px] font-black text-slate-400 uppercase">Token Est.</div>
               </div>
             </div>
             <div className="p-8 space-y-4">
@@ -197,7 +189,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                 onClick={() => setActiveCoder(c)}
                 className={`px-5 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${activeCoder === c ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : isDisabled ? 'opacity-30 cursor-not-allowed' : 'text-slate-400 hover:text-slate-600'}`}
               >
-                {c === 'ai' ? '🤖 AI Expert' : c === 'referee' ? '⚖️ Hakem' : `👤 Kodlayıcı ${c.slice(-1)}`}
+                {c === 'ai' ? '🤖 AI Strategist' : c === 'referee' ? '⚖️ Hakem' : `👤 Kodlayıcı ${c.slice(-1)}`}
                 {video.codings[c] && <span className="ml-2 text-emerald-500">●</span>}
               </button>
             );
@@ -206,14 +198,14 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
         
         {stage === 'ready_to_review' ? (
           <button onClick={() => { onSave('ai', currentCoding); setStage('idle'); alert('AI Analizi Veritabanına Kaydedildi.'); }} className="bg-emerald-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2">
-            ✓ AI KODLAMASINI ONAYLA
+            ✓ ANALİZİ ONAYLA
           </button>
         ) : (
           <button 
             onClick={() => setStage('pre-flight')} 
             className="bg-indigo-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all flex items-center gap-2 transform active:scale-95"
           >
-            🚀 ANALİZİ TETİKLE
+            🚀 MULTIMODAL ANALİZ
           </button>
         )}
       </div>
@@ -229,7 +221,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-950 p-12 text-center">
                    <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 text-2xl">📁</div>
                    <label className="cursor-pointer bg-white text-slate-900 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-slate-50 transition-all">
-                     ANALİZ İÇİN VİDEO YÜKLE
+                     VİDEO SEÇİN
                      <input type="file" accept="video/*" onChange={e => {
                        const f = e.target.files?.[0];
                        if(f) {
@@ -244,7 +236,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
 
             {currentCoding.reasoningChain && currentCoding.reasoningChain.length > 0 && (
               <div className="bg-white rounded-[40px] p-12 border border-slate-100 shadow-sm">
-                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-10">Agentic Reasoning (Muhakeme Zinciri)</h5>
+                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-10">Stratejik Muhakeme Zinciri</h5>
                 <div className="space-y-8">
                   {currentCoding.reasoningChain.map((log, i) => (
                     <div key={i} className="pl-8 border-l-2 border-indigo-50 last:border-0 pb-6">
@@ -269,7 +261,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                 >
                   <option value="">İsim Seçin...</option>
                   {activeCoder !== 'ai' && CODER_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                  <option value="AI Expert (Gemini 3 Pro)">🤖 AI Expert (Gemini 3 Pro)</option>
+                  <option value="AI Multimodal Strategist">🤖 AI Multimodal Strategist</option>
                 </select>
               </div>
               
@@ -317,7 +309,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                   onClick={handleManualSave} 
                   className="w-full bg-slate-900 text-white font-black py-6 rounded-[32px] shadow-2xl hover:bg-black transition-all mt-10 uppercase tracking-widest text-[11px] active:scale-98"
                 >
-                  ANALİZİ VERİTABANINA KAYDET
+                  ANALİZİ KAYDET
                 </button>
               )}
             </div>
