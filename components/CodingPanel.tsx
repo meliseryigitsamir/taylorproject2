@@ -23,7 +23,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
   const [agentStatusText, setAgentStatusText] = useState('');
 
   const getInitialCoding = (role: CoderRole): CodingData => ({
-    coderName: role === 'ai' ? 'AI Pro (Gemini 3 Pro)' : '',
+    coderName: role === 'ai' ? 'AI Expert (Gemini 3 Pro)' : '',
     timestamp: Date.now(),
     videoLength: 0,
     musicUsage: false,
@@ -69,7 +69,8 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
 
   const startPipeline = async () => {
     if (!localFileUrl) {
-      alert("Analiz için lütfen video dosyası yükleyin.");
+      alert("Analiz için önce video yüklemelisiniz.");
+      setStage('idle');
       return;
     }
 
@@ -93,12 +94,12 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
       if (e.message === "RE-SELECT_KEY" || e.message === "MISSING_KEY") {
         onRequestNewKey();
       } else {
-        alert("Bağlantı Hatası: API erişimi sağlanamadı. Lütfen anahtarınızı kontrol edin.");
+        alert("Sistem Hatası: API bağlantısı kurulamadı. Lütfen API Ayarlarını kontrol edin.");
       }
     }
   };
 
-  const isAllReadyForReferee = !!(video.codings.ai && video.codings.human1 && video.codings.human2);
+  const isAllCodingsDone = !!(video.codings.ai && video.codings.human1 && video.codings.human2);
 
   const handleManualSave = () => {
     if (!currentCoding.coderName) {
@@ -123,7 +124,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
             <div className="p-8 border-b bg-slate-50 flex justify-between items-center">
               <div>
                 <h3 className="text-xl font-black text-slate-900 uppercase">Pro-Agentic Analiz</h3>
-                <p className="text-[10px] text-slate-400 font-bold tracking-widest">Model: Gemini 3 Pro</p>
+                <p className="text-[10px] text-slate-400 font-bold tracking-widest">Akademik Muhakeme Modu</p>
               </div>
               <div className="text-right">
                 <div className="text-xl font-black text-indigo-600">~{getTotalEstimate()}</div>
@@ -141,7 +142,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                 </div>
               ))}
               <div className="pt-8 flex gap-4">
-                <button onClick={() => setStage('idle')} className="flex-1 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 rounded-2xl">İptal</button>
+                <button onClick={() => setStage('idle')} className="flex-1 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-50 rounded-2xl">Vazgeç</button>
                 <button onClick={startPipeline} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all">Analizi Başlat</button>
               </div>
             </div>
@@ -163,7 +164,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
       <div className="bg-white px-8 py-3 border-b border-slate-100 flex justify-between items-center shrink-0 z-10">
         <div className="flex bg-slate-100 p-1 rounded-2xl gap-1">
           {(['ai', 'human1', 'human2', 'referee'] as const).map(c => {
-            const isDisabled = c === 'referee' && !isAllReadyForReferee;
+            const isDisabled = c === 'referee' && !isAllCodingsDone;
             return (
               <button
                 key={c}
@@ -179,11 +180,17 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
         </div>
         
         {stage === 'ready_to_review' ? (
-          <button onClick={() => { onSave('ai', currentCoding); setStage('idle'); }} className="bg-emerald-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2">
+          <button onClick={() => { onSave('ai', currentCoding); setStage('idle'); alert('AI Kodlaması kaydedildi!'); }} className="bg-emerald-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center gap-2">
             ✓ AI KODLAMASINI ONAYLA
           </button>
         ) : (
-          <button onClick={() => setStage('pre-flight')} className="bg-indigo-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all flex items-center gap-2">
+          <button 
+            onClick={() => {
+              if(!localFileUrl) return alert("Analiz için önce video yüklemelisiniz.");
+              setStage('pre-flight');
+            }} 
+            className="bg-indigo-600 text-white px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 shadow-xl transition-all flex items-center gap-2"
+          >
             🚀 ANALİZİ BAŞLAT
           </button>
         )}
@@ -198,12 +205,15 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                 <video ref={videoRef} src={localFileUrl} controls className="w-full h-full object-contain" />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-slate-950 p-12 text-center">
-                   <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6">📁</div>
+                   <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center mb-6 text-2xl">📁</div>
                    <label className="cursor-pointer bg-white text-slate-900 px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-2xl hover:bg-slate-50 transition-all">
-                     VİDEO SEÇ
+                     VİDEO SEÇ (MP4)
                      <input type="file" accept="video/*" onChange={e => {
                        const f = e.target.files?.[0];
-                       if(f) setLocalFileUrl(URL.createObjectURL(f));
+                       if(f) {
+                         setLocalFileUrl(URL.createObjectURL(f));
+                         setStage('idle');
+                       }
                      }} className="hidden" />
                    </label>
                 </div>
@@ -212,7 +222,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
 
             {currentCoding.reasoningChain && currentCoding.reasoningChain.length > 0 && (
               <div className="bg-white rounded-[40px] p-12 border border-slate-100 shadow-sm">
-                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-10">AI Akademik Kanıtlar</h5>
+                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-10">AI Muhakeme Kaydı</h5>
                 <div className="space-y-8">
                   {currentCoding.reasoningChain.map((log, i) => (
                     <div key={i} className="pl-8 border-l-2 border-indigo-50 last:border-0 pb-6">
@@ -228,16 +238,16 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
           <div className="xl:col-span-5">
             <div className="bg-white p-10 rounded-[56px] shadow-2xl border border-slate-100 sticky top-10">
               <div className="mb-10">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Kodlayıcı Kimliği *</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Kodlayıcı İsmi *</p>
                 <select 
                   value={currentCoding.coderName} 
                   disabled={activeCoder === 'ai'}
                   onChange={e => setCurrentCoding({...currentCoding, coderName: e.target.value})}
                   className="w-full bg-slate-50 border-none rounded-3xl px-6 py-4 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="">Kodlayıcı Seçin...</option>
+                  <option value="">İsim Seçiniz...</option>
                   {activeCoder !== 'ai' && CODER_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
-                  <option value="AI Pro (Gemini 3 Pro)">🤖 AI Pro (Gemini 3 Pro)</option>
+                  <option value="AI Expert (Gemini 3 Pro)">🤖 AI Expert (Gemini 3 Pro)</option>
                 </select>
               </div>
               
@@ -263,7 +273,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
                   <h5 className="text-[10px] font-black text-slate-400 uppercase mb-8 tracking-widest">Taylor Message Wheel *</h5>
                   <div className="grid grid-cols-2 gap-4">
                     {TAYLOR_SEGMENTS_INFO.map(s => (
-                      <button key={s.id} onClick={() => setCurrentCoding({...currentCoding, taylorSegment: s.id})} className={`p-5 rounded-[28px] border text-left transition-all ${currentCoding.taylorSegment === s.id ? s.color + ' ring-4 ring-indigo-500/10 border-indigo-600' : 'bg-white border-slate-100 text-slate-400'}`}>
+                      <button key={s.id} onClick={() => setCurrentCoding({...currentCoding, taylorSegment: s.id})} className={`p-5 rounded-[28px] border text-left transition-all ${currentCoding.taylorSegment === s.id ? s.color + ' ring-4 ring-indigo-500/10 border-indigo-600' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'}`}>
                         <div className="text-[10px] font-black leading-tight">{s.label}</div>
                       </button>
                     ))}
@@ -278,7 +288,7 @@ export const CodingPanel: React.FC<CodingPanelProps> = ({ video, onSave, onReque
 
               {stage !== 'ready_to_review' && (
                 <button onClick={handleManualSave} className="w-full bg-slate-900 text-white font-black py-6 rounded-[32px] shadow-2xl hover:bg-black transition-all mt-10 uppercase tracking-widest text-[11px]">
-                  KODLAMAYI SİSTEME KAYDET
+                  VERİLERİ KAYDET
                 </button>
               )}
             </div>
